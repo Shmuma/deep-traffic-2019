@@ -25,13 +25,25 @@ class TestCar(unittest.TestCase):
         self.assertTrue(c.overlaps(env.Car(0, 3, 24)))
         self.assertFalse(c.overlaps(env.Car(0, 3, 25)))
 
+    def test_is_inside(self):
+        c = env.Car(0, 0, 2)
+        self.assertTrue(c.is_inside(y_cells=6))
+        self.assertFalse(c.is_inside(y_cells=5))
+        self.assertFalse(env.Car(0, 0, -1).is_inside(y_cells=100))
+
+    def test_shift(self):
+        c = env.Car(0, 0, 1)
+        c.shift_forward(rel_speed=1)
+        self.assertEqual(c.pos_y, 9)
+        self.assertEqual(c.cell_y, 0)
+
 
 class TestTrafficState(unittest.TestCase):
     def test_init(self):
         ts = env.TrafficState()
         self.assertEqual(len(ts.cars), ts.cars_count)
-        self.assertEqual(ts.my_car.pos_x, 3)
-        self.assertEqual(ts.my_car.pos_y, 46)
+        self.assertEqual(ts.my_car.cell_x, 3)
+        self.assertEqual(ts.my_car.cell_y, 46)
 
     def test_render_state(self):
         ts = env.TrafficState(width_lanes=3, height_cells=20, cars=0)

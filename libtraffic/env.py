@@ -13,25 +13,41 @@ class Actions(enum.Enum):
     goRightAction = 4
 
 
+
+# relative Y speed equals 1 pos item per speed unit per frame
+
 class Car:
     Length = 4
+    Cell = 10
 
-    def __init__(self, speed, pos_x, pos_y):
+    def __init__(self, speed, cell_x, cell_y):
         self.speed = speed
-        self.pos_x = pos_x
-        self.pos_y = pos_y
+        self.cell_x = cell_x
+        self.pos_y = cell_y * self.Cell
+
+    @property
+    def cell_y(self):
+        return self.pos_y // self.Cell
 
     def overlaps(self, car, safety_dist=0):
         assert isinstance(car, Car)
-        if self.pos_x != car.pos_x:
+        if self.cell_x != car.cell_x:
             return False
         # if other car is ahead of us significantly
-        if self.pos_y - car.pos_y - self.Length > safety_dist:
+        if self.cell_y - car.cell_y - self.Length > safety_dist:
             return False
         # if other car is behind us
-        if car.pos_y - self.pos_y - self.Length > safety_dist:
+        if car.cell_y - self.cell_y - self.Length > safety_dist:
             return False
         return True
+
+    def shift_forward(self, rel_speed):
+        assert isinstance(rel_speed, int)
+        # we're negating rel speed, as our Y coordinate is decreasing with moving forward
+        self.pos_y -= rel_speed
+
+    def is_inside(self, y_cells):
+        return 0 <= self.cell_y <= (y_cells-self.Length)
 
 
 class TrafficState:
@@ -56,8 +72,8 @@ class TrafficState:
         res = []
         others = [self.my_car]
         while len(res) < count:
-            pos_x, pos_y = self._find_spot(self.width_lanes, self.height_cells, others)
-            car = Car(self.init_speed, pos_x, pos_y)
+            cell_x, cell_y = self._find_spot(self.width_lanes, self.height_cells, others)
+            car = Car(self.init_speed, cell_x, cell_y)
             res.append(car)
             others.append(car)
         return res
@@ -95,7 +111,7 @@ class TrafficState:
         res = np.zeros((self.width_lanes, self.height_cells), dtype=np.float32)
         for car in cars:
             dspeed = car.speed - my_car.speed
-            res[car.pos_x, car.pos_y:(car.pos_y + Car.Length)] = dspeed
+            res[car.cell_x, car.cell_y:(car.cell_y + Car.Length)] = dspeed
         return res
 
 
