@@ -22,12 +22,17 @@ class Car:
 
     def __init__(self, speed, cell_x, cell_y):
         self.speed = speed
+        self.safe_speed = speed
         self.cell_x = cell_x
         self.pos_y = cell_y * self.Cell
 
     @property
     def cell_y(self):
         return self.pos_y // self.Cell
+
+    @property
+    def cell(self):
+        return self.cell_x, self.cell_y
 
     def overlaps(self, car, safety_dist=0):
         assert isinstance(car, Car)
@@ -54,6 +59,7 @@ class TrafficState:
     """
     State of the game
     """
+    # Amount of cells we keep in front of us
     Safety_front = 4
 
     def __init__(self, width_lanes=7, height_cells=70, cars=20, history=0, init_speed_my=80, init_speed_others=65):
@@ -63,7 +69,8 @@ class TrafficState:
         self.history_count = history
         self.init_speed = init_speed_others
         self.my_car = Car(init_speed_my, (width_lanes-1)//2, 2*height_cells//3)
-        self.cars = self._make_cars_initial(cars)
+        self.cars = {(c.cell_x, c.cell_y): c for c in self._make_cars_initial(cars)}
+        self._update_safe_speed(self.my_car, self.cars)
         self.state = self._render_state(self.my_car, self.cars)
 
     def _make_cars_initial(self, count):
@@ -103,14 +110,42 @@ class TrafficState:
                 continue
             return x, y
 
+    def _update_safe_speed(self, my_car, cars):
+        """
+        For each car including our own calculate safe speed, taking into account car in front of us
+        """
+        assert isinstance(my_car, Car)
+        assert isinstance(cars, dict)
+
+        # calculate for every lane individually
+        for x in range(self.width_lanes):
+            prev_car_ends = None
+            prev_car_speed = None
+            for y in range(self.height_cells):
+                if my_car.cell == (x, y):
+                    car = my_car
+                else:
+                    car = cars.get((x, y))
+                if car is None:
+                    continue
+                # no car ahead or distance is enougth to keep the speed, remember our pos
+                if prev_car_ends is None or y - prev_car_ends > self.Safety_front:
+                    pass
+                elif y - prev_car_ends == self.Safety_front:
+                    car.safe_speed = prev_car_speed
+                else:
+                    car.safe_speed = prev_car_speed // 2
+                prev_car_ends = y + Car.Length
+                prev_car_speed = car.safe_speed
+
     def _render_state(self, my_car, cars):
         """
         Returns grid of relative speeds
         :return:
         """
         res = np.zeros((self.width_lanes, self.height_cells), dtype=np.float32)
-        for car in cars:
-            dspeed = car.speed - my_car.speed
+        for car in cars.values():
+            dspeed = car.safe_speed - my_car.safe_speed
             res[car.cell_x, car.cell_y:(car.cell_y + Car.Length)] = dspeed
         return res
 
