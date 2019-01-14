@@ -13,7 +13,6 @@ class Actions(enum.Enum):
     goRightAction = 4
 
 
-
 # relative Y speed equals 1 pos item per speed unit per frame
 
 class Car:
@@ -72,6 +71,10 @@ class TrafficState:
         self.cars = self._make_cars_initial(cars)
         self._update_safe_speed(self.my_car, self.cars)
         self.state = self._render_state(self.my_car, self.cars)
+        self.history = []
+        # populate history
+        for _ in range(self.history_count):
+            self.tick()
 
     def _make_cars_initial(self, count):
         assert isinstance(count, int)
@@ -153,6 +156,39 @@ class TrafficState:
             dspeed = car.safe_speed - my_car.safe_speed
             res[car.cell_x, car.cell_y:(car.cell_y + Car.Length)] = dspeed
         return res
+
+    def _move_cars(self, my_car, cars):
+        assert isinstance(my_car, Car)
+        assert isinstance(cars, list)
+
+        for car in cars:
+            dspeed = car.safe_speed - my_car.safe_speed
+            car.shift_forward(dspeed)
+
+    def tick(self, action=Actions.noAction):
+        """
+        Move time one frame forward
+        """
+        # apply action to my car
+        # perform random actions on other cars
+
+        # change car's positions
+        self._move_cars(self.my_car, self.cars)
+
+        # throw away cars which have driven away
+        # add new cars instead of them
+
+        # update safe speed
+        self._update_safe_speed(self.my_car, self.cars)
+
+        # housekeep the history
+        if self.history_count:
+            self.history.append(self.state)
+            if len(self.history) > self.history_count:
+                self.history.pop(0)
+
+        # render new state
+        self.state = self._render_state(self.my_car, self.cars)
 
 
 class EnvDeepTraffic(gym.Env):

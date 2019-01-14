@@ -78,3 +78,21 @@ class TestTrafficState(unittest.TestCase):
         ts._update_safe_speed(my_car, [c1])
         self.assertEqual(my_car.safe_speed, 10)
         self.assertEqual(c1.safe_speed, 10)
+
+    def test_move_cars(self):
+        ts = env.TrafficState(width_lanes=3, height_cells=20, cars=0)
+        my_car = env.Car(5, 1, 10)
+        c1 = env.Car(15, 0, 10)
+        # relative speed is 10, so c1 should move 1 cell forward
+        ts._move_cars(my_car, [c1])
+        self.assertEqual(c1.cell_y, 9)
+        self.assertEqual(c1.pos_y, 90)
+        self.assertEqual(my_car.cell_y, 10)
+        c1 = env.Car(0, 0, 10)
+        # relative speed is -5, so, it should keep the current cell (due to rounding)
+        ts._move_cars(my_car, [c1])
+        self.assertEqual(c1.cell_y, 10)
+        self.assertEqual(c1.pos_y, 105)
+        ts._move_cars(my_car, [c1])
+        self.assertEqual(c1.cell_y, 11)
+        self.assertEqual(c1.pos_y, 110)
