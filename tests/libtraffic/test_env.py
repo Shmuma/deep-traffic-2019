@@ -49,7 +49,7 @@ class TestTrafficState(unittest.TestCase):
         ts = env.TrafficState(width_lanes=3, height_cells=20, cars=0)
         my_car = env.Car(5, 1, 10)
         c1 = env.Car(15, 0, 10)
-        s = ts._render_state(my_car, {(0, 10): c1})
+        s = ts._render_state(my_car, [c1])
         np.testing.assert_array_equal(s, [
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  10, 10, 10, 10, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
@@ -57,7 +57,7 @@ class TestTrafficState(unittest.TestCase):
         ])
 
         c2 = env.Car(0, 1, 0)
-        s = ts._render_state(my_car, {(0, 10): c1, (1, 0): c2})
+        s = ts._render_state(my_car, [c1, c2])
         np.testing.assert_array_equal(s, [
             [0,   0,  0,  0, 0, 0, 0, 0, 0, 0,  10, 10, 10, 10, 0, 0, 0, 0, 0, 0],
             [-5, -5, -5, -5, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
@@ -69,12 +69,12 @@ class TestTrafficState(unittest.TestCase):
         # nothing should change
         my_car = env.Car(5, 1, 10)
         c1 = env.Car(15, 0, 10)
-        ts._update_safe_speed(my_car, {(0, 10): c1})
+        ts._update_safe_speed(my_car, [c1])
         self.assertEqual(my_car.safe_speed, 5)
         self.assertEqual(c1.safe_speed, 15)
         # our car should be slowed down to the speed of upfront car
         my_car = env.Car(20, 1, 10)
         c1 = env.Car(10, 1, 2)
-        ts._update_safe_speed(my_car, {(1, 2): c1})
+        ts._update_safe_speed(my_car, [c1])
         self.assertEqual(my_car.safe_speed, 10)
         self.assertEqual(c1.safe_speed, 10)

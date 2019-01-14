@@ -69,7 +69,7 @@ class TrafficState:
         self.history_count = history
         self.init_speed = init_speed_others
         self.my_car = Car(init_speed_my, (width_lanes-1)//2, 2*height_cells//3)
-        self.cars = {(c.cell_x, c.cell_y): c for c in self._make_cars_initial(cars)}
+        self.cars = self._make_cars_initial(cars)
         self._update_safe_speed(self.my_car, self.cars)
         self.state = self._render_state(self.my_car, self.cars)
 
@@ -115,7 +115,9 @@ class TrafficState:
         For each car including our own calculate safe speed, taking into account car in front of us
         """
         assert isinstance(my_car, Car)
-        assert isinstance(cars, dict)
+        assert isinstance(cars, list)
+
+        cars_places = {(c.cell_x, c.cell_y): c for c in cars}
 
         # calculate for every lane individually
         for x in range(self.width_lanes):
@@ -125,7 +127,7 @@ class TrafficState:
                 if my_car.cell == (x, y):
                     car = my_car
                 else:
-                    car = cars.get((x, y))
+                    car = cars_places.get((x, y))
                 if car is None:
                     continue
                 # no car ahead or distance is enougth to keep the speed, remember our pos
@@ -143,8 +145,11 @@ class TrafficState:
         Returns grid of relative speeds
         :return:
         """
+        assert isinstance(my_car, Car)
+        assert isinstance(cars, list)
+
         res = np.zeros((self.width_lanes, self.height_cells), dtype=np.float32)
-        for car in cars.values():
+        for car in cars:
             dspeed = car.safe_speed - my_car.safe_speed
             res[car.cell_x, car.cell_y:(car.cell_y + Car.Length)] = dspeed
         return res
