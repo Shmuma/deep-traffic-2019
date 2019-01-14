@@ -9,8 +9,8 @@ class Actions(enum.Enum):
     noAction = 0
     accelerate = 1
     decelerate = 2
-    goLeftAction = 3
-    goRightAction = 4
+    goLeft = 3
+    goRight = 4
 
 
 # relative Y speed equals 1 pos item per speed unit per frame
@@ -18,6 +18,7 @@ class Actions(enum.Enum):
 class Car:
     Length = 4
     Cell = 10
+    MaxSpeed = 80
 
     def __init__(self, speed, cell_x, cell_y):
         self.speed = speed
@@ -45,6 +46,13 @@ class Car:
             return False
         return True
 
+    def overlaps_range(self, min_cell_y, max_cell_y):
+        if min_cell_y <= self.cell_y <= max_cell_y:
+            return True
+        if min_cell_y <= self.cell_y + Car.Length - 1 <= max_cell_y:
+            return True
+        return False
+
     def shift_forward(self, rel_speed):
         assert isinstance(rel_speed, int)
         # we're negating rel speed, as our Y coordinate is decreasing with moving forward
@@ -52,6 +60,11 @@ class Car:
 
     def is_inside(self, y_cells):
         return 0 <= self.cell_y <= (y_cells-self.Length)
+
+    def accelerate(self, delta=1):
+        new_speed = self.speed + delta
+        if 0 < new_speed <= Car.MaxSpeed:
+            self.speed = new_speed
 
 
 class TrafficState:
@@ -133,9 +146,9 @@ class TrafficState:
                     car = cars_places.get((x, y))
                 if car is None:
                     continue
-                # no car ahead or distance is enougth to keep the speed, remember our pos
+                # no car ahead or distance is enougth to keep the speed
                 if prev_car_ends is None or y - prev_car_ends > self.Safety_front:
-                    pass
+                    car.safe_speed = car.speed
                 elif y - prev_car_ends == self.Safety_front:
                     car.safe_speed = prev_car_speed
                 else:
@@ -165,11 +178,45 @@ class TrafficState:
             dspeed = car.safe_speed - my_car.safe_speed
             car.shift_forward(dspeed)
 
+    def _apply_action(self, car, action, other_cars):
+        assert isinstance(car, Car)
+        assert isinstance(action, Actions)
+        assert isinstance(other_cars, list)
+
+        if action == Actions.noAction:
+            return
+
+        if action == Actions.accelerate:
+            car.accelerate(1)
+            return
+        elif action == Actions.decelerate:
+            car.accelerate(-1)
+            return
+
+        new_x = car.cell_x
+        if action == Actions.goLeft:
+            new_x -= 1
+        else:
+            new_x += 1
+        # if new position is beyond the road, ignore it
+        if new_x < 0 or new_x >= self.width_lanes:
+            return
+        # check the safety system
+        min_y = car.cell_y - 6
+        max_y = car.cell_y + car.Length + 1
+        for c in other_cars:
+            if c.cell_x == new_x and c.overlaps_range(min_y, max_y):
+                return
+        car.cell_x = new_x
+
+
     def tick(self, action=Actions.noAction):
         """
         Move time one frame forward
         """
         # apply action to my car
+        self._apply_action(self.my_car, action, self.cars)
+
         # perform random actions on other cars
 
         # change car's positions

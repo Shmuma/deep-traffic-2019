@@ -25,6 +25,16 @@ class TestCar(unittest.TestCase):
         self.assertTrue(c.overlaps(env.Car(0, 3, 24)))
         self.assertFalse(c.overlaps(env.Car(0, 3, 25)))
 
+    def test_overlaps_range(self):
+        c = env.Car(0, 0, 0)
+        self.assertTrue(c.overlaps_range(0, 0))
+        self.assertTrue(c.overlaps_range(0, 10))
+        self.assertTrue(c.overlaps_range(-10, 0))
+        self.assertFalse(c.overlaps_range(-10, -1))
+        self.assertTrue(c.overlaps_range(1, 10))
+        self.assertTrue(c.overlaps_range(3, 10))
+        self.assertFalse(c.overlaps_range(4, 10))
+
     def test_is_inside(self):
         c = env.Car(0, 0, 2)
         self.assertTrue(c.is_inside(y_cells=6))
@@ -96,3 +106,56 @@ class TestTrafficState(unittest.TestCase):
         ts._move_cars(my_car, [c1])
         self.assertEqual(c1.cell_y, 11)
         self.assertEqual(c1.pos_y, 110)
+
+    def test_apply_action(self):
+        ts = env.TrafficState(width_lanes=3, height_cells=20, cars=0)
+        my_car = env.Car(5, 1, 10)
+        c1 = env.Car(15, 0, 10)
+        s = ts._render_state(my_car, [c1])
+        np.testing.assert_array_equal(s, [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  10, 10, 10, 10, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
+        ])
+
+        ts._apply_action(c1, env.Actions.accelerate, [my_car])
+        self.assertEqual(c1.speed, 16)
+        ts._update_safe_speed(my_car, [c1])
+        s = ts._render_state(my_car, [c1])
+        np.testing.assert_array_equal(s, [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  11, 11, 11, 11, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
+        ])
+
+        # should be ignored - central car is on the way
+        ts._apply_action(c1, env.Actions.goRight, [my_car])
+        self.assertEqual(c1.cell_x, 0)
+        s = ts._render_state(my_car, [c1])
+        np.testing.assert_array_equal(s, [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  11, 11, 11, 11, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
+        ])
+
+        # move central car to the right
+        ts._apply_action(my_car, env.Actions.goRight, [c1])
+        self.assertEqual(my_car.cell_x, 2)
+        s = ts._render_state(my_car, [c1])
+        np.testing.assert_array_equal(s, [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  11, 11, 11, 11, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0],
+        ])
+
+        # should now change lanes
+        ts._apply_action(c1, env.Actions.goRight, [my_car])
+        self.assertEqual(c1.cell_x, 1)
+        s = ts._render_state(my_car, [c1])
+        np.testing.assert_array_equal(s, [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 11, 11, 11, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0, 0, 0, 0, 0, 0],
+        ])
+
+        # TODO: more tests of safety system are needed 
