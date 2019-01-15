@@ -228,6 +228,10 @@ class TestTrafficState(unittest.TestCase):
                 assert False
             ts.tick()
 
+    def test_render(self):
+        # TODO: tests of rendered view!
+        pass
+
 
 class TestDeepTraffic(unittest.TestCase):
     def test_basic(self):

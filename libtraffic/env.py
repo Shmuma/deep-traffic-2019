@@ -80,13 +80,26 @@ class TrafficState:
     Safety_front = 4
 
     def __init__(self, width_lanes=7, height_cells=70, cars=20, history=0, init_speed_my=80, init_speed_others=65,
-                 other_cars_action_prob=0.1):
+                 other_cars_action_prob=0.1, state_render_view=None):
+        """
+        Construct internal DeepTraffic model
+        :param width_lanes: width of the road in lanes
+        :param height_cells: height of the road in cells
+        :param cars: how many other cars will be there
+        :param history: how many history states to track
+        :param init_speed_my: central car initial speed
+        :param init_speed_others: inital speed of other cars
+        :param other_cars_action_prob: probability of other cars to take random action
+        :param state_render_view: if None, full field will be rendered, otherwise has to be a tuple
+        (side_lanes, cells_before, cells_after) defining dimensions of state to be rendered
+        """
         self.width_lanes = width_lanes
         self.height_cells = height_cells
         self.cars_count = cars
         self.history_count = history
         self.init_speed = init_speed_others
         self.other_cars_action_prob = other_cars_action_prob
+        self.state_render_view = state_render_view
 
         self.my_car = Car(init_speed_my, (width_lanes-1)//2, 2*height_cells//3)
         self.cars = self._make_cars_initial(cars)
@@ -165,6 +178,27 @@ class TrafficState:
                 prev_car_ends = y + Car.Length
                 prev_car_speed = car.safe_speed
 
+    def _iterate_car_render_cells(self, car):
+        if self.state_render_view is None:
+            for d in range(Car.Length):
+                yield (car.cell_x, car.cell_y+d)
+        else:
+            # need to remap coords
+            render_lanes, render_before, render_behind = self.state_render_view
+            dx = car.cell_x - self.my_car.cell_x
+            if abs(dx) <= render_lanes:
+                map_x = dx + render_lanes
+                for d in range(Car.Length):
+                    dy = car.cell_y - self.my_car.cell_y
+                    if dy < 0 and -dy <= render_before:
+                        # remap and yield -- cell is before us
+                        map_y = dy + render_before
+                        yield map_x, map_y
+                    elif dy < render_behind:
+                        # remap and yield -- cell is behind
+                        map_y = dy + render_before
+                        yield map_x, map_y
+
     def _render_state(self, my_car, cars):
         """
         Returns grid of relative speeds
@@ -173,10 +207,15 @@ class TrafficState:
         assert isinstance(my_car, Car)
         assert isinstance(cars, list)
 
-        res = np.zeros((self.width_lanes, self.height_cells), dtype=np.float32)
+        if self.state_render_view is None:
+            res = np.zeros((self.width_lanes, self.height_cells), dtype=np.float32)
+        else:
+            shape = (self.state_render_view[0]*2+1, self.state_render_view[1]+self.state_render_view[2])
+            res = np.zeros(shape, dtype=np.float32)
         for car in cars:
             dspeed = car.safe_speed - my_car.safe_speed
-            res[car.cell_x, car.cell_y:(car.cell_y + Car.Length)] = dspeed
+            for x, y in self._iterate_car_render_cells(car):
+                res[x, y] = dspeed
         return res
 
     def _render_occupancy(self, my_car, cars):
