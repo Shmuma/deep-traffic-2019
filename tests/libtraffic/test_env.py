@@ -43,7 +43,7 @@ class TestCar(unittest.TestCase):
 
     def test_shift(self):
         c = env.Car(0, 0, 1)
-        c.shift_forward(rel_speed=1)
+        c.shift_forward(rel_speed=env.Car.SpeedUnitsPerPos)
         self.assertEqual(c.pos_y, 9)
         self.assertEqual(c.cell_y, 0)
 
@@ -96,16 +96,16 @@ class TestTrafficState(unittest.TestCase):
         # relative speed is 10, so c1 should move 1 cell forward
         ts._move_cars(my_car, [c1])
         self.assertEqual(c1.cell_y, 9)
-        self.assertEqual(c1.pos_y, 90)
+        self.assertEqual(c1.pos_y, 98)
         self.assertEqual(my_car.cell_y, 10)
         c1 = env.Car(0, 0, 10)
         # relative speed is -5, so, it should keep the current cell (due to rounding)
         ts._move_cars(my_car, [c1])
         self.assertEqual(c1.cell_y, 10)
-        self.assertEqual(c1.pos_y, 105)
+        self.assertEqual(c1.pos_y, 101)
         ts._move_cars(my_car, [c1])
-        self.assertEqual(c1.cell_y, 11)
-        self.assertEqual(c1.pos_y, 110)
+        self.assertEqual(c1.cell_y, 10)
+        self.assertEqual(c1.pos_y, 102)
 
     def test_apply_action(self):
         ts = env.TrafficState(width_lanes=3, height_cells=20, cars=0)
@@ -222,12 +222,6 @@ class TestTrafficState(unittest.TestCase):
     def test_check_collisions(self):
         ts = env.TrafficState()
         for _ in range(1000):
-            # r = ts._render_occupancy(ts.my_car, ts.cars)
-            # ref = (ts.cars_count+1)*4
-            # s = np.sum(r)
-            # self.assertEqual(ref, s)
-#            if s != ref:
-#                print(r)
             c = ts.is_collision()
             if c is not None:
                 print("Collision! %s with %s" % c)

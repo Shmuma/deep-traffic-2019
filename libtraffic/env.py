@@ -13,12 +13,13 @@ class Actions(enum.Enum):
     goRight = 4
 
 
-# relative Y speed equals 1 pos item per speed unit per frame
+# relative Y speed equals 1 pos item per 5 speed units per frame
 
 class Car:
     Length = 4
     Cell = 10
     MaxSpeed = 80
+    SpeedUnitsPerPos = 5
 
     def __init__(self, speed, cell_x, cell_y):
         self.speed = speed
@@ -59,7 +60,7 @@ class Car:
     def shift_forward(self, rel_speed):
         assert isinstance(rel_speed, int)
         # we're negating rel speed, as our Y coordinate is decreasing with moving forward
-        self.pos_y -= rel_speed
+        self.pos_y -= rel_speed // Car.SpeedUnitsPerPos
 
     def is_inside(self, y_cells):
         return 0 <= self.cell_y <= (y_cells-self.Length)
@@ -228,7 +229,7 @@ class TrafficState:
         actions = [Actions.accelerate, Actions.decelerate, Actions.goLeft, Actions.goRight]
         action = random.choice(actions)
         car = random.choice(cars)
-        print("%s will do %s" % (car, action))
+#        print("%s will do %s" % (car, action))
         self._apply_action(car, action, cars + [self.my_car])
 
     def tick(self, action=Actions.noAction):
