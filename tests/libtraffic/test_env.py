@@ -214,8 +214,22 @@ class TestTrafficState(unittest.TestCase):
             [0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         ])
 
-
         # should be accepted
         c1 = env.Car(15, 0, 0)
         ts._apply_action(my_car, env.Actions.goLeft, [c1])
         self.assertEqual(my_car.cell, (0, 10))
+
+    def test_check_collisions(self):
+        ts = env.TrafficState()
+        for _ in range(1000):
+            # r = ts._render_occupancy(ts.my_car, ts.cars)
+            # ref = (ts.cars_count+1)*4
+            # s = np.sum(r)
+            # self.assertEqual(ref, s)
+#            if s != ref:
+#                print(r)
+            c = ts.is_collision()
+            if c is not None:
+                print("Collision! %s with %s" % c)
+                assert False
+            ts.tick()
