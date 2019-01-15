@@ -203,12 +203,11 @@ class TrafficState:
             return
         # check the safety system
         min_y = car.cell_y - 6
-        max_y = car.cell_y + car.Length + 1
+        max_y = car.cell_y + car.Length
         for c in other_cars:
             if c.cell_x == new_x and c.overlaps_range(min_y, max_y):
                 return
         car.cell_x = new_x
-
 
     def tick(self, action=Actions.noAction):
         """

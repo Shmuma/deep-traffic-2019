@@ -158,4 +158,64 @@ class TestTrafficState(unittest.TestCase):
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0, 0, 0, 0, 0, 0],
         ])
 
-        # TODO: more tests of safety system are needed 
+    def test_safety_system(self):
+        ts = env.TrafficState(width_lanes=3, height_cells=20, cars=0)
+        my_car = env.Car(5, 1, 10)
+        c1 = env.Car(15, 0, 14)
+        s = ts._render_state(my_car, [c1])
+        np.testing.assert_array_equal(s, [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0, 0, 0],
+        ])
+
+        # should be refused
+        ts._apply_action(my_car, env.Actions.goLeft, [c1])
+        self.assertEqual(my_car.cell, (1, 10))
+
+        c1 = env.Car(15, 0, 15)
+        # should move
+        ts._apply_action(my_car, env.Actions.goLeft, [c1])
+        self.assertEqual(my_car.cell, (0, 10))
+
+        s = ts._render_state(my_car, [c1])
+        np.testing.assert_array_equal(s, [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0, 0],
+        ])
+
+        ts._update_safe_speed(my_car, [c1])
+        self.assertEqual(c1.safe_speed, 2)
+
+        # check in front of the car
+        ts = env.TrafficState(width_lanes=3, height_cells=20, cars=0)
+        my_car = env.Car(5, 1, 10)
+        c1 = env.Car(15, 0, 6)
+        s = ts._render_state(my_car, [c1])
+        np.testing.assert_array_equal(s, [
+            [0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0,  0,  0,  0,  0, +0, +0, +0, +0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0,  0,  0,  0,  0, 0, 0, 0, 0,  0,  0,  0,  0, 0, 0],
+        ])
+
+        # should be refused
+        ts._apply_action(my_car, env.Actions.goLeft, [c1])
+        self.assertEqual(my_car.cell, (1, 10))
+
+        # should be refused
+        c1 = env.Car(15, 0, 1)
+        ts._apply_action(my_car, env.Actions.goLeft, [c1])
+        self.assertEqual(my_car.cell, (1, 10))
+        s = ts._render_state(my_car, [c1])
+        np.testing.assert_array_equal(s, [
+            [0, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0,  0,  0,  0,  0, 0, 0, 0, 0, 0, +0, +0, +0, +0, 0, 0, 0, 0, 0, 0],
+            [0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ])
+
+
+        # should be accepted
+        c1 = env.Car(15, 0, 0)
+        ts._apply_action(my_car, env.Actions.goLeft, [c1])
+        self.assertEqual(my_car.cell, (0, 10))
