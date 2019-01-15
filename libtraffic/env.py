@@ -2,6 +2,7 @@ import gym
 from gym import spaces
 import enum
 import random
+import collections
 import numpy as np
 
 
@@ -91,7 +92,8 @@ class TrafficState:
         self.cars = self._make_cars_initial(cars)
         self._update_safe_speed(self.my_car, self.cars)
         self.state = self._render_state(self.my_car, self.cars)
-        self.history = []
+        self.history = collections.deque(maxlen=self.history_count)
+        self.actions_history = collections.deque(maxlen=self.history_count)
         # populate history
         for _ in range(self.history_count):
             self.tick()
@@ -236,6 +238,11 @@ class TrafficState:
         """
         Move time one frame forward
         """
+        # housekeep the history
+        if self.history_count:
+            self.history.append((self.state, self.my_car.cell_x))
+            self.actions_history.append(action)
+
         # apply action to my car
         self._apply_action(self.my_car, action, self.cars)
 
@@ -252,12 +259,6 @@ class TrafficState:
 
         # update safe speed
         self._update_safe_speed(self.my_car, self.cars)
-
-        # housekeep the history
-        if self.history_count:
-            self.history.append(self.state)
-            if len(self.history) > self.history_count:
-                self.history.pop(0)
 
         # render new state
         self.state = self._render_state(self.my_car, self.cars)
@@ -276,6 +277,30 @@ class TrafficState:
 
 
 class EnvDeepTraffic(gym.Env):
-    def __init__(self, lanes_side=3, patches_ahead=20, patches_behind=10):
+    def __init__(self, lanes_side=3, patches_ahead=20, patches_behind=10, history=3):
+        self.state = None
+        self.history_steps = history
         self.action_space = spaces.Discrete(len(Actions))
-        self.observation_space = spaces.Box()
+        self.lanes_side = lanes_side
+        self.patches_ahead = patches_ahead
+        self.patches_behind = patches_behind
+        self.obs_shape = (history + 1 + len(Actions)*history, lanes_side*2 + 1, patches_ahead + patches_behind)
+        self.observation_space = spaces.Box(low=-Car.MaxSpeed, high=Car.MaxSpeed, shape=self.obs_shape, dtype=np.float32)
+
+    def reset(self):
+        self.state = TrafficState(history=self.history_steps)
+        result = self._render_state(self.state)
+        return result
+
+    def _render_state(self, state):
+        res = np.zeros(self.obs_shape, dtype=np.float32)
+        res[0] = self._get_patch(state.state, state.my_car.cell_x, state.my_car.cell_y)
+        return res
+
+    def _get_patch(self, data, c_x, c_y):
+        x_min = max(0, c_x - self.lanes_side)
+        x_max = min(self.state.width_lanes, c_x + self.lanes_side+1)
+        y_min = max(0, c_y - self.patches_ahead)
+        y_max = min(self.state.height_cells, c_y + self.patches_behind)
+        res = data[x_min:x_max, y_min:y_max]
+        return res

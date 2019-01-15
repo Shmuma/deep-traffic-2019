@@ -227,3 +227,10 @@ class TestTrafficState(unittest.TestCase):
                 print("Collision! %s with %s" % c)
                 assert False
             ts.tick()
+
+
+class TestDeepTraffic(unittest.TestCase):
+    def test_basic(self):
+        e = env.EnvDeepTraffic(lanes_side=1, patches_ahead=20, patches_behind=10, history=0)
+        r = e.reset()
+#        self.assertEqual(r.shape, (1, 7, 30))
