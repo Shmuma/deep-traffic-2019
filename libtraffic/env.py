@@ -131,9 +131,9 @@ class TrafficState:
 
         random.shuffle(positions)
         for x, y in positions:
-            speed = self.init_speed + random.randrange(-20, 20)
+            speed = self.init_speed + random.randrange(-5, 5)
             car = Car(speed, x, y)
-            if any(map(lambda c: car.overlaps(c), self.cars)):
+            if any(map(lambda c: car.overlaps(c, safety_dist=4), self.cars)):
                 continue
             return car
         return None
@@ -155,28 +155,27 @@ class TrafficState:
         assert isinstance(my_car, Car)
         assert isinstance(cars, list)
 
-        cars_places = {(c.cell_x, c.cell_y): c for c in cars}
+        list_cars = cars + [my_car]
+        list_cars.sort(key=lambda c: c.cell)
+        prev_x = -1
+        prev_car_ends = None
+        prev_car_speed = None
 
-        # calculate for every lane individually
-        for x in range(self.width_lanes):
-            prev_car_ends = None
-            prev_car_speed = None
-            for y in range(self.height_cells):
-                if my_car.cell == (x, y):
-                    car = my_car
-                else:
-                    car = cars_places.get((x, y))
-                if car is None:
-                    continue
-                # no car ahead or distance is enougth to keep the speed
-                if prev_car_ends is None or y - prev_car_ends > self.Safety_front:
-                    car.safe_speed = car.speed
-                elif y - prev_car_ends == self.Safety_front:
-                    car.safe_speed = prev_car_speed
-                else:
-                    car.safe_speed = prev_car_speed // 2
-                prev_car_ends = y + Car.Length
-                prev_car_speed = car.safe_speed
+        for car in list_cars:
+            if prev_x != car.cell_x:
+                prev_car_ends = None
+                prev_car_speed = None
+            y = car.cell_y
+            prev_x = car.cell_x
+            # no car ahead or distance is enougth to keep the speed
+            if prev_car_ends is None or y - prev_car_ends > self.Safety_front:
+                car.safe_speed = car.speed
+            elif y - prev_car_ends == self.Safety_front:
+                car.safe_speed = prev_car_speed
+            else:
+                car.safe_speed = prev_car_speed // 2
+            prev_car_ends = y + Car.Length
+            prev_car_speed = car.safe_speed
 
     def _iterate_car_render_cells(self, car):
         if self.state_render_view is None:
@@ -294,7 +293,10 @@ class TrafficState:
         # throw away cars which have driven away and add new cars instead of them
         self.cars = list(filter(lambda c: c.is_inside(self.height_cells), self.cars))
         while len(self.cars) < self.cars_count:
-            self.cars.append(self._make_car_new())
+            new_car = self._make_car_new()
+            if new_car is None:
+                break
+            self.cars.append(new_car)
 
         # update safe speed
         self._update_safe_speed(self.my_car, self.cars)
