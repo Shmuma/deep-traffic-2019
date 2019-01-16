@@ -189,12 +189,12 @@ class TrafficState:
             if abs(dx) <= render_lanes:
                 map_x = dx + render_lanes
                 for d in range(Car.Length):
-                    dy = car.cell_y - self.my_car.cell_y
+                    dy = car.cell_y - self.my_car.cell_y + d
                     if dy < 0 and -dy <= render_before:
                         # remap and yield -- cell is before us
                         map_y = dy + render_before
                         yield map_x, map_y
-                    elif dy < render_behind:
+                    elif 0 <= dy < render_behind:
                         # remap and yield -- cell is behind
                         map_y = dy + render_before
                         yield map_x, map_y

@@ -1,3 +1,4 @@
+import random
 import unittest
 import numpy as np
 
@@ -230,6 +231,20 @@ class TestTrafficState(unittest.TestCase):
 
     def test_render(self):
         # TODO: tests of rendered view!
+        random.seed(10)
+        ts = env.TrafficState(state_render_view=(1, 10, 5))
+        self.assertEqual(ts.state.shape, (3, 15))
+        np.testing.assert_array_equal(ts.state, [
+            [-15, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0, 0, 0],
+            [  0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0, 0, 0],
+            [  0, 0, 0, 0, 0, 0, 0, 0, 0, -15, -15, -15, -15, 0, 0],
+        ])
+        ts.tick(env.Actions.goLeft)
+        np.testing.assert_array_equal(ts.state, [
+            [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -15, -15, -15, -15, 0],
+            [-15, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0, 0],
+            [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0, 0],
+        ])
         pass
 
 
