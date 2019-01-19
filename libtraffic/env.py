@@ -71,6 +71,15 @@ class Car:
         if 0 < new_speed <= Car.MaxSpeed:
             self.speed = new_speed
 
+    def state(self):
+        return {
+            'speed': self.speed,
+            'sspeed': self.safe_speed,
+            'c_x': self.cell_x,
+            'c_y': self.cell_y,
+            'p_y': self.pos_y
+        }
+
 
 class TrafficState:
     """
@@ -257,7 +266,7 @@ class TrafficState:
             return
         # check the safety system
         min_y = car.cell_y - 6
-        max_y = car.cell_y + car.Length
+        max_y = car.cell_y + car.Length + int(round((car.pos_y % 10)/10))
         for c in other_cars:
             if c.cell_x == new_x and c.overlaps_range(min_y, max_y):
                 return
@@ -287,6 +296,9 @@ class TrafficState:
         # perform random actions on other cars
         self._random_action(self.cars)
 
+        # update safe speed
+        self._update_safe_speed(self.my_car, self.cars)
+
         # change car's positions
         self._move_cars(self.my_car, self.cars)
 
@@ -297,9 +309,6 @@ class TrafficState:
             if new_car is None:
                 break
             self.cars.append(new_car)
-
-        # update safe speed
-        self._update_safe_speed(self.my_car, self.cars)
 
         # render new state
         self.state = self._render_state(self.my_car, self.cars)
@@ -315,6 +324,12 @@ class TrafficState:
                 if c1.overlaps(c2):
                     return c1, c2
         return None
+
+    def snapshot(self):
+        res = [self.my_car.state()]
+        for c in self.cars:
+            res.append(c.state())
+        return res
 
 
 class EnvDeepTraffic(gym.Env):

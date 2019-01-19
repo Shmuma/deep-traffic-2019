@@ -1,6 +1,7 @@
 import random
 import unittest
 import numpy as np
+import pprint
 
 from libtraffic import env
 
@@ -222,12 +223,16 @@ class TestTrafficState(unittest.TestCase):
 
     def test_check_collisions(self):
         ts = env.TrafficState()
+        # history = [ts.snapshot()]
         for _ in range(1000):
             c = ts.is_collision()
             if c is not None:
                 print("Collision! %s with %s" % c)
+                # with open("collision.txt", 'wt', encoding='utf-8') as fd:
+                #     pprint.pprint(history, fd)
                 assert False
             ts.tick()
+#            history.append(ts.snapshot())
 
     def test_render(self):
         # TODO: tests of rendered view!
