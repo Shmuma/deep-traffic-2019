@@ -105,7 +105,6 @@ class TrafficState:
         self.width_lanes = width_lanes
         self.height_cells = height_cells
         self.cars_count = cars
-        self.history_count = history
         self.init_speed = init_speed_others
         self.other_cars_action_prob = other_cars_action_prob
         self.state_render_view = state_render_view
@@ -115,10 +114,10 @@ class TrafficState:
         self._update_safe_speed(self.my_car, self.cars)
         self.state = self._render_state(self.my_car, self.cars)
         # history has more recent entries in front
-        self.history = collections.deque(maxlen=self.history_count)
-        self.actions_history = collections.deque(maxlen=self.history_count)
+        self.history = collections.deque(maxlen=history)
+        self.actions_history = collections.deque(maxlen=history)
         # populate history
-        for _ in range(self.history_count):
+        for _ in range(history):
             self.tick()
 
     def _make_cars_initial(self, count):
@@ -291,9 +290,8 @@ class TrafficState:
         Move time one frame forward
         """
         # housekeep the history, more recent entries are in front
-        if self.history_count:
-            self.history.appendleft(self.state)
-            self.actions_history.appendleft(action)
+        self.history.appendleft(self.state)
+        self.actions_history.appendleft(action)
 
         # apply action to my car
         self._apply_action(self.my_car, action, self.cars)
@@ -382,5 +380,12 @@ class DeepTraffic(gym.Env):
     def _reward(self):
         return (self.state.my_car.safe_speed - 60) / 20
 
-    #def step(self, action):
+    def step(self, action_index):
+        action = Actions(action_index)
+        self.state.tick(action)
+        obs = self._render_state(self.state)
+        r = self._reward()
+        return obs, r, False, {}
 
+    def close(self):
+        pass
