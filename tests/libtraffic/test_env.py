@@ -255,6 +255,17 @@ class TestTrafficState(unittest.TestCase):
 
 class TestDeepTraffic(unittest.TestCase):
     def test_basic(self):
-        e = env.EnvDeepTraffic(lanes_side=1, patches_ahead=20, patches_behind=10, history=0)
+        e = env.DeepTraffic(lanes_side=1, patches_ahead=20, patches_behind=10, history=0)
         r = e.reset()
-#        self.assertEqual(r.shape, (1, 7, 30))
+        self.assertEqual(r.shape, (1, 3, 30))
+
+    def test_hist(self):
+        e = env.DeepTraffic(lanes_side=1, patches_ahead=20, patches_behind=10, history=3)
+        r = e.reset()
+        self.assertEqual(r.shape, (19, 3, 30))
+        np.testing.assert_array_equal(r[4], 1.0)
+        np.testing.assert_array_equal(r[5:9], 0.0)
+        np.testing.assert_array_equal(r[9], 1.0)
+        np.testing.assert_array_equal(r[10:14], 0.0)
+        np.testing.assert_array_equal(r[14], 1.0)
+        np.testing.assert_array_equal(r[15:19], 0.0)

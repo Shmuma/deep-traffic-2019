@@ -114,6 +114,7 @@ class TrafficState:
         self.cars = self._make_cars_initial(cars)
         self._update_safe_speed(self.my_car, self.cars)
         self.state = self._render_state(self.my_car, self.cars)
+        # history has more recent entries in front
         self.history = collections.deque(maxlen=self.history_count)
         self.actions_history = collections.deque(maxlen=self.history_count)
         # populate history
@@ -186,8 +187,8 @@ class TrafficState:
             prev_car_ends = y + Car.Length
             prev_car_speed = car.safe_speed
 
-    def _iterate_car_render_cells(self, car):
-        if self.state_render_view is None:
+    def _iterate_car_render_cells(self, car, full_state=False):
+        if full_state or self.state_render_view is None:
             for d in range(Car.Length):
                 yield (car.cell_x, car.cell_y+d)
         else:
@@ -207,7 +208,13 @@ class TrafficState:
                         map_y = dy + render_before
                         yield map_x, map_y
 
-    def _render_state(self, my_car, cars):
+    def _state_shape(self, full_state=False):
+        if full_state or self.state_render_view is None:
+            return self.width_lanes, self.height_cells
+        else:
+            return self.state_render_view[0]*2+1, self.state_render_view[1]+self.state_render_view[2]
+
+    def _render_state(self, my_car, cars, render_full=False):
         """
         Returns grid of relative speeds
         :return:
@@ -215,22 +222,20 @@ class TrafficState:
         assert isinstance(my_car, Car)
         assert isinstance(cars, list)
 
-        if self.state_render_view is None:
-            res = np.zeros((self.width_lanes, self.height_cells), dtype=np.float32)
-        else:
-            shape = (self.state_render_view[0]*2+1, self.state_render_view[1]+self.state_render_view[2])
-            res = np.zeros(shape, dtype=np.float32)
+        res = np.zeros(self._state_shape(full_state=render_full), dtype=np.float32)
         for car in cars:
             dspeed = car.safe_speed - my_car.safe_speed
-            for x, y in self._iterate_car_render_cells(car):
+            for x, y in self._iterate_car_render_cells(car, full_state=render_full):
                 res[x, y] = dspeed
         return res
 
-    def _render_occupancy(self, my_car, cars):
-        res = np.zeros((self.width_lanes, self.height_cells), dtype=int)
-        res[my_car.cell_x, my_car.cell_y:(my_car.cell_y + Car.Length)] = 1
+    def _render_occupancy(self, my_car, cars, render_full=False):
+        res = np.zeros(self._state_shape(full_state=render_full), dtype=int)
+        for x, y in self._iterate_car_render_cells(my_car, full_state=render_full):
+            res[x, y] = 2
         for car in cars:
-            res[car.cell_x, car.cell_y:(car.cell_y + Car.Length)] = 1
+            for x, y in self._iterate_car_render_cells(car):
+                res[x, y] = 1
         return res
 
     def _move_cars(self, my_car, cars):
@@ -285,10 +290,10 @@ class TrafficState:
         """
         Move time one frame forward
         """
-        # housekeep the history
+        # housekeep the history, more recent entries are in front
         if self.history_count:
-            self.history.append((self.state, self.my_car.cell_x))
-            self.actions_history.append(action)
+            self.history.appendleft(self.state)
+            self.actions_history.appendleft(action)
 
         # apply action to my car
         self._apply_action(self.my_car, action, self.cars)
@@ -331,32 +336,51 @@ class TrafficState:
             res.append(c.state())
         return res
 
+    def render_occupancy(self, full):
+        assert isinstance(full, bool)
+        return self._render_occupancy(self.my_car, self.cars, render_full=full)
 
-class EnvDeepTraffic(gym.Env):
-    def __init__(self, lanes_side=3, patches_ahead=20, patches_behind=10, history=3):
+    def render_state(self, full):
+        assert isinstance(full, bool)
+        return self._render_state(self.my_car, self.cars, render_full=full)
+
+
+class DeepTraffic(gym.Env):
+    def __init__(self, lanes_side=1, patches_ahead=20, patches_behind=10, history=3):
         self.state = None
         self.history_steps = history
         self.action_space = spaces.Discrete(len(Actions))
         self.lanes_side = lanes_side
         self.patches_ahead = patches_ahead
         self.patches_behind = patches_behind
+        # observations stack are current state, history of states and history of one-hot encoded actions
         self.obs_shape = (history + 1 + len(Actions)*history, lanes_side*2 + 1, patches_ahead + patches_behind)
-        self.observation_space = spaces.Box(low=-Car.MaxSpeed, high=Car.MaxSpeed, shape=self.obs_shape, dtype=np.float32)
+        self.observation_space = spaces.Box(low=-Car.MaxSpeed, high=Car.MaxSpeed,
+                                            shape=self.obs_shape, dtype=np.float32)
 
     def reset(self):
-        self.state = TrafficState(history=self.history_steps)
+        render_view = (self.lanes_side, self.patches_ahead, self.patches_behind)
+        self.state = TrafficState(history=self.history_steps, state_render_view=render_view)
         result = self._render_state(self.state)
         return result
 
     def _render_state(self, state):
         res = np.zeros(self.obs_shape, dtype=np.float32)
-        res[0] = self._get_patch(state.state, state.my_car.cell_x, state.my_car.cell_y)
+        # current state
+        res[0] = state.state
+        # history
+        ofs = 1
+        for hist_state in state.history:
+            res[ofs] = hist_state
+            ofs += 1
+        # actions history
+        for action in state.actions_history:
+            res[ofs + action.value] = 1.0
+            ofs += len(Actions)
         return res
 
-    def _get_patch(self, data, c_x, c_y):
-        x_min = max(0, c_x - self.lanes_side)
-        x_max = min(self.state.width_lanes, c_x + self.lanes_side+1)
-        y_min = max(0, c_y - self.patches_ahead)
-        y_max = min(self.state.height_cells, c_y + self.patches_behind)
-        res = data[x_min:x_max, y_min:y_max]
-        return res
+    def _reward(self):
+        return (self.state.my_car.safe_speed - 60) / 20
+
+    #def step(self, action):
+
