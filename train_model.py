@@ -6,7 +6,7 @@ import pathlib
 import ptan
 import gym.wrappers
 from tensorboardX import SummaryWriter
-from libtraffic import env, utils
+from libtraffic import env, utils, model
 
 log = logging.getLogger("train_model")
 
@@ -26,11 +26,11 @@ if __name__ == "__main__":
 
     e = env.DeepTraffic(lanes_side=LANES_SIDE, patches_ahead=PATCHES_AHEAD,
                         patches_behind=PATCHES_BEHIND, history=HISTORY)
+    obs_shape = e.obs_shape
     e = gym.wrappers.TimeLimit(e, max_episode_steps=ENV_STEPS_LIMIT)
 
-    s = e.reset()
-    log.info("Environment created, obs shape %s", s.shape)
+    log.info("Environment created, obs shape %s", obs_shape)
+    net = model.DQN(obs_shape, e.action_space.n)
+    log.info("Model: %s", net)
 
-    # make model
-    
     pass
