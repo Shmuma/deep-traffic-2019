@@ -235,7 +235,6 @@ class TestTrafficState(unittest.TestCase):
 #            history.append(ts.snapshot())
 
     def test_render(self):
-        # TODO: tests of rendered view!
         random.seed(10)
         ts = env.TrafficState(state_render_view=(1, 10, 5))
         self.assertEqual(ts.state.shape, (3, 15))
@@ -250,7 +249,6 @@ class TestTrafficState(unittest.TestCase):
             [-15, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0, 0],
             [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0, 0],
         ])
-        pass
 
 
 class TestDeepTraffic(unittest.TestCase):
