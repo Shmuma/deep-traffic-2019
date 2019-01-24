@@ -387,5 +387,8 @@ class DeepTraffic(gym.Env):
         r = self._reward()
         return obs, r, False, {}
 
+    def current_speed(self):
+        return self.state.my_car.safe_speed
+
     def close(self):
         pass
