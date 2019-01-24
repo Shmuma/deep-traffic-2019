@@ -15,14 +15,14 @@ import torch.optim as optim
 log = logging.getLogger("train_model")
 
 # obs hyperparams
-LANES_SIDE = 1
-PATCHES_AHEAD = 20
-PATCHES_BEHIND = 10
+LANES_SIDE = 3
+PATCHES_AHEAD = 40
+PATCHES_BEHIND = 20
 HISTORY = 3
 
-ENV_STEPS_LIMIT = 100
+ENV_STEPS_LIMIT = 200
 EPS_START = 1.0
-EPS_END = 0.05
+EPS_END = 0.15
 EPS_STEPS = 100000
 
 GAMMA = 0.95
