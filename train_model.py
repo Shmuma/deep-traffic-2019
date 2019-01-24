@@ -20,7 +20,7 @@ PATCHES_AHEAD = 20
 PATCHES_BEHIND = 10
 HISTORY = 3
 
-ENV_STEPS_LIMIT = 1000
+ENV_STEPS_LIMIT = 100
 EPS_START = 1.0
 EPS_END = 0.05
 EPS_STEPS = 100000
@@ -34,7 +34,7 @@ NET_SYNC_STEPS = 256
 TEST_STEPS = 1000
 
 
-def test_agent(net, steps=10000, rounds=5, device=torch.device('cpu')):
+def test_agent(net, steps=1000, rounds=5, device=torch.device('cpu')):
     round_means = []
     for _ in range(rounds):
         speed_hist = []
