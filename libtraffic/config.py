@@ -73,3 +73,7 @@ class Settings:
     @property
     def train_add_steps_limit_max(self):
         return self.parser.getint('train', 'add_steps_limit_max', fallback=0)
+
+    @property
+    def train_net_sync_steps(self):
+        return self.parser.getint('train', 'net_sync_steps')

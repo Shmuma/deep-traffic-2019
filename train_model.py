@@ -14,7 +14,6 @@ import torch.optim as optim
 
 log = logging.getLogger("train_model")
 
-NET_SYNC_STEPS = 250
 TEST_STEPS = 1000
 
 
@@ -88,7 +87,7 @@ if __name__ == "__main__":
             losses.append(loss_v.item())
             optimizer.step()
 
-            if step % NET_SYNC_STEPS == 0:
+            if step % ini.train_net_sync_steps == 0:
                 tgt_net.sync()
             if step % TEST_STEPS == 0:
                 mean_loss = np.mean(losses)
