@@ -65,3 +65,11 @@ class Settings:
     @property
     def train_l2_reg(self):
         return self.parser.getfloat('train', 'l2_reg', fallback=0.0)
+
+    @property
+    def train_add_steps_limit_slope(self):
+        return self.parser.getfloat('train', 'add_steps_limit_slope', fallback=0.0)
+
+    @property
+    def train_add_steps_limit_max(self):
+        return self.parser.getint('train', 'add_steps_limit_max', fallback=0)

@@ -355,10 +355,15 @@ class DeepTraffic(gym.Env):
         self.obs_shape = (history + 1 + len(Actions)*history, lanes_side*2 + 1, patches_ahead + patches_behind)
         self.observation_space = spaces.Box(low=-Car.MaxSpeed, high=Car.MaxSpeed,
                                             shape=self.obs_shape, dtype=np.float32)
+        self.speed_history = []
+        self.prev_mean_speed = 0.0
 
     def reset(self):
         render_view = (self.lanes_side, self.patches_ahead, self.patches_behind)
         self.state = TrafficState(history=self.history_steps, state_render_view=render_view)
+        if self.speed_history:
+            self.prev_mean_speed = np.mean(self.speed_history)
+        self.speed_history.clear()
         result = self._render_state(self.state)
         return result
 
@@ -385,6 +390,7 @@ class DeepTraffic(gym.Env):
         self.state.tick(action)
         obs = self._render_state(self.state)
         r = self._reward()
+        self.speed_history.append(self.current_speed())
         return obs, r, False, {}
 
     def current_speed(self):

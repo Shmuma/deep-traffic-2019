@@ -52,6 +52,7 @@ if __name__ == "__main__":
 
     e = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
                         patches_behind=ini.env_patches_behind, history=ini.env_history)
+    orig_env = e
     obs_shape = e.obs_shape
     e = gym.wrappers.TimeLimit(e, max_episode_steps=ini.env_steps_limit)
 
@@ -79,6 +80,7 @@ if __name__ == "__main__":
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
                 tracker.reward(new_rewards[-1], step, epsilon=selector.epsilon)
+                writer.add_scalar("car_speed_train", orig_env.prev_mean_speed, step)
             optimizer.zero_grad()
             batch = buffer.sample(ini.train_batch_size)
             loss_v = model.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=ini.train_gamma, device=device)
@@ -104,4 +106,11 @@ if __name__ == "__main__":
                     log.info("Best speed updated: %.2f -> %.2f", best_test_speed, car_speed_mu)
                     best_test_speed = car_speed_mu
                     torch.save(net.state_dict(), save_path / ("best_%.2f.dat" % best_test_speed))
+
+                if ini.train_add_steps_limit_slope > 0:
+                    extra_steps = min(int(step * ini.train_add_steps_limit_slope),
+                                      ini.train_add_steps_limit_max)
+                    limit = ini.env_steps_limit + extra_steps
+                    writer.add_scalar("steps_limit", limit, step)
+                    e._max_episode_steps = limit
     pass
