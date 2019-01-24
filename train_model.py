@@ -7,40 +7,23 @@ import pathlib
 import numpy as np
 import gym.wrappers
 from tensorboardX import SummaryWriter
-from libtraffic import env, utils, model
+from libtraffic import env, utils, model, config
 
 import torch
 import torch.optim as optim
 
 log = logging.getLogger("train_model")
 
-# obs hyperparams
-LANES_SIDE = 3
-PATCHES_AHEAD = 40
-PATCHES_BEHIND = 20
-HISTORY = 3
-
-ENV_STEPS_LIMIT = 200
-EPS_START = 1.0
-EPS_END = 0.15
-EPS_STEPS = 100000
-
-GAMMA = 0.95
-REPLAY_SIZE = 100000
-MIN_REPLAY = 1000
-LEARNING_RATE = 1e-4
-BATCH_SIZE = 512
 NET_SYNC_STEPS = 250
 TEST_STEPS = 1000
-L2_REG = 1e-3
 
 
-def test_agent(net, steps=1000, rounds=5, device=torch.device('cpu')):
+def test_agent(ini, net, steps=1000, rounds=5, device=torch.device('cpu')):
     round_means = []
     for _ in range(rounds):
         speed_hist = []
-        test_env = env.DeepTraffic(lanes_side=LANES_SIDE, patches_ahead=PATCHES_AHEAD,
-                                   patches_behind=PATCHES_BEHIND, history=HISTORY)
+        test_env = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
+                                   patches_behind=ini.env_patches_behind, history=ini.env_history)
         obs = test_env.reset()
 
         for _ in range(steps):
@@ -57,29 +40,31 @@ if __name__ == "__main__":
     utils.setup_logging()
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--name", required=True, help="Name of the run")
-    parser.add_argument("--cuda", action='store_true', default=False, help="Enable cuda calculations")
+    parser.add_argument("-i", '--ini', required=True, help="Name of ini file to use")
     args = parser.parse_args()
-    device = torch.device("cuda" if args.cuda else "cpu")
+    ini = config.Settings(args.ini)
+
+    device = torch.device("cuda" if ini.train_cuda else "cpu")
     save_path = pathlib.Path("saves") / args.name
     save_path.mkdir(parents=True, exist_ok=True)
 
     writer = SummaryWriter(comment="-" + args.name)
 
-    e = env.DeepTraffic(lanes_side=LANES_SIDE, patches_ahead=PATCHES_AHEAD,
-                        patches_behind=PATCHES_BEHIND, history=HISTORY)
+    e = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
+                        patches_behind=ini.env_patches_behind, history=ini.env_history)
     obs_shape = e.obs_shape
-    e = gym.wrappers.TimeLimit(e, max_episode_steps=ENV_STEPS_LIMIT)
+    e = gym.wrappers.TimeLimit(e, max_episode_steps=ini.env_steps_limit)
 
     log.info("Environment created, obs shape %s", obs_shape)
     net = model.DQN(obs_shape, e.action_space.n).to(device)
     log.info("Model: %s", net)
 
     tgt_net = ptan.agent.TargetNet(net)
-    selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=EPS_START)
+    selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=ini.train_eps_start)
     agent = ptan.agent.DQNAgent(net, selector, device=device)
-    exp_source = ptan.experience.ExperienceSourceFirstLast(e, agent, gamma=GAMMA, steps_count=1)
-    buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=REPLAY_SIZE)
-    optimizer = optim.RMSprop(net.parameters(), lr=LEARNING_RATE, weight_decay=L2_REG)
+    exp_source = ptan.experience.ExperienceSourceFirstLast(e, agent, gamma=ini.train_gamma, steps_count=1)
+    buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=ini.train_replay_size)
+    optimizer = optim.RMSprop(net.parameters(), lr=ini.train_lr, weight_decay=ini.train_l2_reg)
 
     step = 0
     losses = []
@@ -87,16 +72,16 @@ if __name__ == "__main__":
     with ptan.common.utils.RewardTracker(writer) as tracker:
         while True:
             buffer.populate(1)
-            if len(buffer) < MIN_REPLAY:
+            if len(buffer) < ini.train_replay_initial:
                 continue
             step += 1
-            selector.epsilon = max(EPS_END, EPS_START - step / EPS_STEPS)
+            selector.epsilon = max(ini.train_eps_end, ini.train_eps_start - step / ini.train_eps_steps)
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
                 tracker.reward(new_rewards[-1], step, epsilon=selector.epsilon)
             optimizer.zero_grad()
-            batch = buffer.sample(BATCH_SIZE)
-            loss_v = model.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=GAMMA, device=device)
+            batch = buffer.sample(ini.train_batch_size)
+            loss_v = model.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=ini.train_gamma, device=device)
             loss_v.backward()
             losses.append(loss_v.item())
             optimizer.step()
@@ -106,7 +91,7 @@ if __name__ == "__main__":
             if step % TEST_STEPS == 0:
                 mean_loss = np.mean(losses)
                 losses.clear()
-                car_speed_mu, car_speed_std = test_agent(net, device=device)
+                car_speed_mu, car_speed_std = test_agent(ini, net, device=device)
                 log.info("%d: loss=%.3f, test_speed_mu=%.2f, test_speed_std=%.2f", step, mean_loss, car_speed_mu,
                          car_speed_std)
                 writer.add_scalar("loss", mean_loss, step)

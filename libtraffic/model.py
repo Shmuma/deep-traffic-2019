@@ -10,8 +10,10 @@ class DQN(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(obs_shape[0], 32, kernel_size=3, padding=(1, 0)),
             nn.ReLU(),
+            nn.MaxPool2d(kernel_size=(1, 2)),
             nn.Conv2d(32, 32, kernel_size=3, padding=(1, 0)),
             nn.ReLU(),
+            nn.MaxPool2d(kernel_size=(1, 2)),
         )
 
         conv_out_size = self._get_conv_out(obs_shape)
