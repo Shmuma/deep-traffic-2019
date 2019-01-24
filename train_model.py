@@ -29,9 +29,10 @@ GAMMA = 0.95
 REPLAY_SIZE = 100000
 MIN_REPLAY = 1000
 LEARNING_RATE = 1e-4
-BATCH_SIZE = 128
-NET_SYNC_STEPS = 256
+BATCH_SIZE = 512
+NET_SYNC_STEPS = 250
 TEST_STEPS = 1000
+L2_REG = 1e-3
 
 
 def test_agent(net, steps=1000, rounds=5, device=torch.device('cpu')):
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     agent = ptan.agent.DQNAgent(net, selector, device=device)
     exp_source = ptan.experience.ExperienceSourceFirstLast(e, agent, gamma=GAMMA, steps_count=1)
     buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=REPLAY_SIZE)
-    optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
+    optimizer = optim.RMSprop(net.parameters(), lr=LEARNING_RATE, weight_decay=L2_REG)
 
     step = 0
     losses = []
