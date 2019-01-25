@@ -8,12 +8,12 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
 
         self.conv = nn.Sequential(
-            nn.Conv2d(obs_shape[0], 32, kernel_size=3, padding=(1, 0)),
+            nn.Conv2d(obs_shape[0], 32, kernel_size=3, padding=0),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(1, 2)),
-            nn.Conv2d(32, 32, kernel_size=3, padding=(1, 0)),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(32, 16, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(1, 2)),
+            nn.MaxPool2d(kernel_size=2, padding=1),
         )
 
         conv_out_size = self._get_conv_out(obs_shape)
