@@ -207,6 +207,18 @@ class TrafficState:
                         map_y = dy + render_before
                         yield map_x, map_y
 
+    def _iterate_road_lanes(self, full_state=False):
+        if full_state or self.state_render_view is None:
+            yield from range(self.width_lanes)
+        else:
+            center = self.my_car.cell_x
+            for lane_ofs in range(-self.state_render_view[0], self.state_render_view[0] + 1):
+                abs_x = center + lane_ofs
+                if abs_x < 0 or abs_x >= self.width_lanes:
+                    continue
+                rel_x = abs_x - self.my_car.cell_x + self.state_render_view[0]
+                yield rel_x
+
     def _state_shape(self, full_state=False):
         if full_state or self.state_render_view is None:
             return self.width_lanes, self.height_cells
@@ -222,10 +234,20 @@ class TrafficState:
         assert isinstance(cars, list)
 
         res = np.zeros(self._state_shape(full_state=render_full), dtype=np.float32)
+        # fill empty cells of the road
+        for lane in self._iterate_road_lanes(render_full):
+            res[lane, :] = 1.0
         for car in cars:
-            dspeed = car.safe_speed - my_car.safe_speed
+            # see https://github.com/lexfridman/deeptraffic/issues/7
+            #dspeed = abs(car.safe_speed - my_car.safe_speed) / 1000
+            dspeed = car.safe_speed / 2000
             for x, y in self._iterate_car_render_cells(car, full_state=render_full):
                 res[x, y] = dspeed
+        # this shouldn't be filled or filled with zeros, but original deeptraffic env is buggy
+        dspeed = my_car.safe_speed / 2000
+        for x, y in self._iterate_car_render_cells(my_car, full_state=render_full):
+            res[x, y] = dspeed
+
         return res
 
     def _render_occupancy(self, my_car, cars, render_full=False):
