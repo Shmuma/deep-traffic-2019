@@ -2,6 +2,7 @@
 import argparse
 import logging
 
+import sys
 import ptan
 import pathlib
 import numpy as np
@@ -40,14 +41,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--name", required=True, help="Name of the run")
     parser.add_argument("-i", '--ini', required=True, help="Name of ini file to use")
+    parser.add_argument("--show-model", default=False, action='store_true', help="Display model and exit")
     args = parser.parse_args()
     ini = config.Settings(args.ini)
 
     device = torch.device("cuda" if ini.train_cuda else "cpu")
-    save_path = pathlib.Path("saves") / args.name
-    save_path.mkdir(parents=True, exist_ok=True)
 
-    writer = SummaryWriter(comment="-" + args.name)
+    if not args.show_model:
+        save_path = pathlib.Path("saves") / args.name
+        save_path.mkdir(parents=True, exist_ok=True)
+        writer = SummaryWriter(comment="-" + args.name)
 
     e = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
                         patches_behind=ini.env_patches_behind, history=ini.env_history)
@@ -58,6 +61,9 @@ if __name__ == "__main__":
     log.info("Environment created, obs shape %s", obs_shape)
     net = model.DQN(obs_shape, e.action_space.n).to(device)
     log.info("Model: %s", net)
+
+    if args.show_model:
+        sys.exit(0)
 
     tgt_net = ptan.agent.TargetNet(net)
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=ini.train_eps_start)
