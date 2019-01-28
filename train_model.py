@@ -99,7 +99,7 @@ if __name__ == "__main__":
             if step % TEST_STEPS == 0:
                 mean_loss = np.mean(losses)
                 losses.clear()
-                car_speed_mu, car_speed_std = test_agent(ini, net, device=device)
+                car_speed_mu, car_speed_std = test_agent(ini, net, device=device, rounds=20)
                 log.info("%d: loss=%.3f, test_speed_mu=%.2f, test_speed_std=%.2f", step, mean_loss, car_speed_mu,
                          car_speed_std)
                 writer.add_scalar("loss", mean_loss, step)
