@@ -71,7 +71,7 @@ if __name__ == "__main__":
     exp_source = ptan.experience.ExperienceSourceFirstLast(e, agent, gamma=ini.train_gamma, steps_count=1)
     buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=ini.train_replay_size)
     optimizer = optim.RMSprop(net.parameters(), lr=ini.train_lr, weight_decay=ini.train_l2_reg)
-
+    sched = optim.lr_scheduler.StepLR(optimizer, 20000, 0.99)
     step = 0
     losses = []
     best_test_speed = None
@@ -81,6 +81,7 @@ if __name__ == "__main__":
             if len(buffer) < ini.train_replay_initial:
                 continue
             step += 1
+            sched.step()
             selector.epsilon = max(ini.train_eps_end, ini.train_eps_start - step / ini.train_eps_steps)
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
@@ -104,6 +105,7 @@ if __name__ == "__main__":
                 writer.add_scalar("loss", mean_loss, step)
                 writer.add_scalar("car_speed_mu", car_speed_mu, step)
                 writer.add_scalar("car_speed_std", car_speed_std, step)
+                writer.add_scalar("lr", sched.get_lr()[0], step)
 
                 if best_test_speed is None:
                     best_test_speed = car_speed_mu
