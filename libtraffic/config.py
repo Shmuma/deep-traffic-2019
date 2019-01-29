@@ -77,3 +77,15 @@ class Settings:
     @property
     def train_net_sync_steps(self):
         return self.parser.getint('train', 'net_sync_steps')
+
+    @property
+    def train_test_steps(self):
+        return self.parser.getint('train', 'test_steps', 1000)
+
+    @property
+    def train_test_interval(self):
+        return self.parser.getint('train', 'test_interval', 1000)
+
+    @property
+    def train_test_rounds(self):
+        return self.parser.getint('train', 'test_rounds', 5)

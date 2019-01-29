@@ -15,8 +15,6 @@ import torch.optim as optim
 
 log = logging.getLogger("train_model")
 
-TEST_STEPS = 1000
-
 
 def test_agent(ini, net, steps=1000, rounds=5, device=torch.device('cpu')):
     round_means = []
@@ -96,10 +94,10 @@ if __name__ == "__main__":
 
             if step % ini.train_net_sync_steps == 0:
                 tgt_net.sync()
-            if step % TEST_STEPS == 0:
+            if step % ini.train_test_interval == 0:
                 mean_loss = np.mean(losses)
                 losses.clear()
-                car_speed_mu, car_speed_std = test_agent(ini, net, device=device, rounds=20)
+                car_speed_mu, car_speed_std = test_agent(ini, net, device=device, rounds=ini.train_test_rounds)
                 log.info("%d: loss=%.3f, test_speed_mu=%.2f, test_speed_std=%.2f", step, mean_loss, car_speed_mu,
                          car_speed_std)
                 writer.add_scalar("loss", mean_loss, step)
