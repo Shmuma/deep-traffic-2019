@@ -80,12 +80,12 @@ class Settings:
 
     @property
     def train_test_steps(self):
-        return self.parser.getint('train', 'test_steps', 1000)
+        return self.parser.getint('train', 'test_steps', fallback=1000)
 
     @property
     def train_test_interval(self):
-        return self.parser.getint('train', 'test_interval', 1000)
+        return self.parser.getint('train', 'test_interval', fallback=1000)
 
     @property
     def train_test_rounds(self):
-        return self.parser.getint('train', 'test_rounds', 5)
+        return self.parser.getint('train', 'test_rounds', fallback=5)
