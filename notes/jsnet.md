@@ -45,6 +45,9 @@ add_steps_limit_max=1800
 net_sync_steps=10000
 ```
 
+Input dims:
+
+
 Java script:
 ```javascript
 lanesSide = 3;
