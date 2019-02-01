@@ -8,9 +8,82 @@ from libtraffic import env, model, config
 import torch.nn as nn
 
 
+def np_to_dict(arr):
+    shape = arr.shape
+    if len(shape) == 3:
+        sx, sy, depth = shape
+    else:
+        sx, sy = 1, 1
+        depth = shape[0]
+    return {
+        "sx": sx,
+        "sy": sy,
+        "depth": depth,
+        "w": {str(idx): float(val) for idx, val in enumerate(arr.flatten())}
+    }
+
+
+def conv_weights(m):
+    assert isinstance(m, nn.Conv2d)
+
+    res = {
+        'layer_type': 'conv',
+        'sx': m.kernel_size[0],
+        'sy': m.kernel_size[1],
+        'in_depth': m.in_channels,
+        'out_depth': m.out_channels,
+        'stride': m.stride[0],
+        'pad': m.padding[0],
+    }
+
+    sdict = m.state_dict()
+    w = sdict['weight']
+    res_filters = []
+    for filt_idx in range(w.size()[0]):
+        filt = w[filt_idx]
+        filt = filt.permute(1, 2, 0)
+        f_dict = np_to_dict(filt.numpy())
+        res_filters.append(f_dict)
+    res['filters'] = res_filters
+
+    b = sdict['bias']
+    res['biases'] = np_to_dict(b.numpy())
+    return res
+
+
+def relu_weights(m, size):
+    assert isinstance(m, nn.ReLU)
+
+    return {
+        "out_depth": size,
+        "out_sx": 1,
+        "out_sy": 1,
+        "layer_type": "relu"
+    }
+
+
+def pool_weights(m, size):
+    assert isinstance(m, nn.MaxPool2d)
+
+    return {
+        'layer_type': 'pool',
+        'sx': m.kernel_size,
+        'stride': m.stride,
+        'pad': m.padding,
+        "in_depth": size,
+        "out_depth": size,
+        "out_sx": 1,
+        "out_sy": ','
+    }
+
+
 def dump_layers(net, env):
+    layers = []
+    weights = []
+    conv_size = None
     for m in net.conv.modules():
         d = None
+        w = None
         if isinstance(m, nn.Conv2d):
             # JSConvNet limitations
             assert m.stride[0] == m.stride[1]
@@ -19,11 +92,16 @@ def dump_layers(net, env):
                 'type': 'conv',
                 'sx': m.kernel_size[0],
                 'sy': m.kernel_size[1],
+                'in_depth': m.in_channels,
                 'stride': m.stride[0],
                 'pad': m.padding[0],
                 'filters': m.out_channels,
                 'activation': 'relu',
             }
+            w = conv_weights(m)
+            conv_size = m.out_channels
+        elif isinstance(m, nn.ReLU):
+            w = relu_weights(m, conv_size)
         elif isinstance(m, nn.MaxPool2d):
             d = {
                 'type': 'pool',
@@ -31,8 +109,11 @@ def dump_layers(net, env):
                 'stride': m.stride,
                 'pad': m.padding,
             }
+            w = pool_weights(m, conv_size)
         if d is not None:
             print('layer_defs.push(' + json.dumps(d, indent=4, sort_keys=True) + ');')
+        if w is not None:
+            weights.append(w)
 
     for m in net.fc.modules():
         d = None
@@ -51,6 +132,9 @@ def dump_layers(net, env):
         if d is not None:
             print('layer_defs.push(' + json.dumps(d, indent=4, sort_keys=True) + ');')
 
+
+# TODO: fix input layer shape and dump
+# TODO: dump of FC weights
 
 def dump_net(ini, net, env, state_dict):
     # params first
@@ -132,6 +216,7 @@ if __name__ == "__main__":
     e = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
                         patches_behind=ini.env_patches_behind, history=ini.env_history)
     net = model.DQN(e.obs_shape, e.action_space.n)
+    print(net)
 #    net.load_state_dict()
 #    state_dict = torch.load(args.model)
     state_dict = {}
