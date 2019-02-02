@@ -366,17 +366,24 @@ class TrafficState:
 
 
 class DeepTraffic(gym.Env):
-    def __init__(self, lanes_side=1, patches_ahead=20, patches_behind=10, history=3):
+    def __init__(self, lanes_side=1, patches_ahead=20, patches_behind=10, history=3, obs='conv'):
         self.state = None
         self.history_steps = history
         self.action_space = spaces.Discrete(len(Actions))
         self.lanes_side = lanes_side
         self.patches_ahead = patches_ahead
         self.patches_behind = patches_behind
-        # observations stack are current state, history of states and history of one-hot encoded actions
-        self.obs_shape = (history + 1 + len(Actions)*history, lanes_side*2 + 1, patches_ahead + patches_behind)
-        self.observation_space = spaces.Box(low=-Car.MaxSpeed, high=Car.MaxSpeed,
-                                            shape=self.obs_shape, dtype=np.float32)
+        if obs == 'conv':
+            # observations stack are current state, history of states and history of one-hot encoded actions
+            self.obs_shape = (history + 1 + len(Actions)*history, lanes_side*2 + 1, patches_ahead + patches_behind)
+            self.observation_space = spaces.Box(low=-Car.MaxSpeed, high=Car.MaxSpeed,
+                                                shape=self.obs_shape, dtype=np.float32)
+        elif obs == 'js':
+            num_input = (lanes_side*2 + 1) * (patches_ahead + patches_behind)
+            self.obs_shape = (num_input * history + len(Actions) * history + num_input, )
+        else:
+            raise ValueError("Wrong value passed in obs param")
+        self.obs_kind = obs
         self.speed_history = []
         self.prev_mean_speed = 0.0
 
@@ -390,18 +397,29 @@ class DeepTraffic(gym.Env):
         return result
 
     def _render_state(self, state):
-        res = np.zeros(self.obs_shape, dtype=np.float32)
-        # current state
-        res[0] = state.state
-        # history
-        ofs = 1
-        for hist_state in state.history:
-            res[ofs] = hist_state
-            ofs += 1
-        # actions history
-        for action in state.actions_history:
-            res[ofs + action.value] = 1.0
-            ofs += len(Actions)
+        if self.obs_kind == 'conv':
+            res = np.zeros(self.obs_shape, dtype=np.float32)
+            # current state
+            res[0] = state.state
+            # history
+            ofs = 1
+            for hist_state in state.history:
+                res[ofs] = hist_state
+                ofs += 1
+            # actions history
+            for action in state.actions_history:
+                res[ofs + action.value] = 1.0
+                ofs += len(Actions)
+        elif self.obs_kind == 'js':
+            v = []
+            v.append(state.state.flatten())
+            for hist_state in state.history:
+                v.append(hist_state.flatten())
+            for action in state.actions_history:
+                a = np.zeros(len(Actions), dtype=np.float32)
+                a[action.value] = 1.0
+                v.append(a)
+            res = np.hstack(v)
         return res
 
     def _reward(self):

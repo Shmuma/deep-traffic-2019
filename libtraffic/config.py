@@ -27,6 +27,10 @@ class Settings:
         return self.parser.getint('env', 'steps_limit', fallback=100)
 
     @property
+    def env_obs(self):
+        return self.parser.get('env', 'obs', fallback='conv')
+
+    @property
     def train_gamma(self):
         return self.parser.getfloat('train', 'gamma', fallback=0.95)
 

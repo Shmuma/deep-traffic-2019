@@ -51,7 +51,7 @@ if __name__ == "__main__":
         writer = SummaryWriter(comment="-" + args.name)
 
     e = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
-                        patches_behind=ini.env_patches_behind, history=ini.env_history)
+                        patches_behind=ini.env_patches_behind, history=ini.env_history, obs=ini.env_obs)
     orig_env = e
     obs_shape = e.obs_shape
     e = gym.wrappers.TimeLimit(e, max_episode_steps=ini.env_steps_limit)
