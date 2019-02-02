@@ -413,11 +413,10 @@ class DeepTraffic(gym.Env):
         elif self.obs_kind == 'js':
             v = []
             v.append(state.state.flatten())
-            for hist_state in state.history:
+            for hist_state, action in zip(state.history, state.actions_history):
                 v.append(hist_state.flatten())
-            for action in state.actions_history:
                 a = np.zeros(len(Actions), dtype=np.float32)
-                a[action.value] = 1.0
+                a[action.value] = len(Actions)
                 v.append(a)
             res = np.hstack(v)
         return res

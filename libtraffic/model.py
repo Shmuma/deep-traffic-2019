@@ -37,14 +37,14 @@ class DQNLexFC(nn.Module):
     def __init__(self, obs_shape, n_actions):
         super(DQNLexFC, self).__init__()
 
-        self.net = nn.Sequential(
+        self.fc = nn.Sequential(
             nn.Linear(obs_shape[0], 40),
             nn.ReLU(),
             nn.Linear(40, n_actions)
         )
 
     def forward(self, x):
-        return self.net(x)
+        return self.fc(x)
 
 
 MODELS = {
