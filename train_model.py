@@ -21,7 +21,7 @@ def test_agent(ini, net, steps=1000, rounds=5, device=torch.device('cpu')):
     for _ in range(rounds):
         speed_hist = []
         test_env = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
-                                   patches_behind=ini.env_patches_behind, history=ini.env_history)
+                                   patches_behind=ini.env_patches_behind, history=ini.env_history, obs=ini.env_obs)
         obs = test_env.reset()
 
         for _ in range(steps):
