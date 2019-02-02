@@ -5,6 +5,7 @@ import json
 import numpy as np
 from libtraffic import env, model, config
 
+import torch
 import torch.nn as nn
 
 
@@ -136,7 +137,7 @@ def dump_layers(net, env):
 # TODO: fix input layer shape and dump
 # TODO: dump of FC weights
 
-def dump_net(ini, net, env, state_dict):
+def dump_net(ini, net, env):
     # params first
     print(f"""
 //<![CDATA[
@@ -204,7 +205,6 @@ learn = function (state, lastReward) {{
     pass
 
 
-
 if __name__ == "__main__":
     np.set_printoptions(edgeitems=10, linewidth=160)
     parser = argparse.ArgumentParser()
@@ -214,12 +214,10 @@ if __name__ == "__main__":
     ini = config.Settings(args.ini)
 
     e = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
-                        patches_behind=ini.env_patches_behind, history=ini.env_history)
+                        patches_behind=ini.env_patches_behind, history=ini.env_history, obs=ini.env_obs)
     model_class = model.MODELS[ini.train_model]
     net = model_class(e.obs_shape, e.action_space.n)
     print(net)
-#    net.load_state_dict()
-#    state_dict = torch.load(args.model)
-    state_dict = {}
+    net.load_state_dict(torch.load(args.model))
 
-    dump_net(ini, net, e, state_dict)
+    dump_net(ini, net, e)
