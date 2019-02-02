@@ -33,8 +33,23 @@ class DQN(nn.Module):
         return self.fc(conv_out)
 
 
+class DQNLexFC(nn.Module):
+    def __init__(self, obs_shape, n_actions):
+        super(DQNLexFC, self).__init__()
+
+        self.net = nn.Sequential(
+            nn.Linear(obs_shape[0], 40),
+            nn.ReLU(),
+            nn.Linear(40, n_actions)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
 MODELS = {
-    'conv-v1': DQN
+    'conv-v1': DQN,
+    'lex-fc': DQNLexFC
 }
 
 
