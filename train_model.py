@@ -46,9 +46,10 @@ if __name__ == "__main__":
     device = torch.device("cuda" if ini.train_cuda else "cpu")
 
     if not args.show_model:
-        save_path = pathlib.Path("saves") / args.name
+        name = pathlib.Path(args.ini).stem + "-" + args.name
+        save_path = pathlib.Path("saves") / name
         save_path.mkdir(parents=True, exist_ok=True)
-        writer = SummaryWriter(comment="-" + args.name)
+        writer = SummaryWriter(comment="-" + name)
 
     e = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
                         patches_behind=ini.env_patches_behind, history=ini.env_history, obs=ini.env_obs)
