@@ -49,7 +49,7 @@ class DQNLexFC(nn.Module):
 
 MODELS = {
     'conv-v1': DQN,
-    'lex-fc': DQNLexFC
+    'lexfc-v1': DQNLexFC
 }
 
 
