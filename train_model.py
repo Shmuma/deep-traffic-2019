@@ -57,7 +57,8 @@ if __name__ == "__main__":
     e = gym.wrappers.TimeLimit(e, max_episode_steps=ini.env_steps_limit)
 
     log.info("Environment created, obs shape %s", obs_shape)
-    net = model.DQN(obs_shape, e.action_space.n).to(device)
+    model_class = model.MODELS[ini.train_model]
+    net = model_class(obs_shape, e.action_space.n).to(device)
     log.info("Model: %s", net)
 
     if args.show_model:

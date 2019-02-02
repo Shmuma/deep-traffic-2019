@@ -33,6 +33,11 @@ class DQN(nn.Module):
         return self.fc(conv_out)
 
 
+MODELS = {
+    'conv-v1': DQN
+}
+
+
 def unpack_batch(batch):
     states, actions, rewards, dones, last_states = [], [], [], [], []
     for exp in batch:

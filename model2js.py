@@ -215,7 +215,8 @@ if __name__ == "__main__":
 
     e = env.DeepTraffic(lanes_side=ini.env_lanes_side, patches_ahead=ini.env_patches_ahead,
                         patches_behind=ini.env_patches_behind, history=ini.env_history)
-    net = model.DQN(e.obs_shape, e.action_space.n)
+    model_class = model.MODELS[ini.train_model]
+    net = model_class(e.obs_shape, e.action_space.n)
     print(net)
 #    net.load_state_dict()
 #    state_dict = torch.load(args.model)

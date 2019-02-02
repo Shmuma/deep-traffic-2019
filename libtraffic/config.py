@@ -89,3 +89,7 @@ class Settings:
     @property
     def train_test_rounds(self):
         return self.parser.getint('train', 'test_rounds', fallback=5)
+
+    @property
+    def train_model(self):
+        return self.parser.get('train', 'model', fallback='conv-v1')
