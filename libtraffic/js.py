@@ -106,56 +106,65 @@ def pool_weights(m, size):
     }
 
 
-def dump_fc(net, output_size):
+def fc(net, first_subnet=True, last_subnet=True):
+    """
+    Convert fully-connected sequence of layers into JS format
+    NOTE: this version assume relu activations
+    :param net: torch network
+    :param first_subnet: is it first subnet. If true, input layer will be created
+    :param last_subnet: is it last subnet. If true, regression layer will be created
+    :return: list of layers, dict with weights
+    """
+    layers = []
     weights = []
-    input_created = False
-    prev_out_size = None
+    cur_in_size, cur_out_size = None, None
 
-    for m in net.modules():
+    for m_idx, m in enumerate(net.modules()):
         d = None
         w = None
 
         if isinstance(m, nn.Linear):
-            prev_out_size = m.out_features
+            cur_out_size = m.out_features
+            cur_in_size = m.in_features
             d = {
                 'type': 'fc',
                 'num_neurons': m.out_features,
                 'activation': 'relu',
             }
             w = fc_weights(m)
-            # output layer
-            if m.out_features == output_size:
-                d = {
-                    'type': 'regression',
-                    'num_neurons': output_size
-                }
         elif isinstance(m, nn.ReLU):
-            w = {"out_depth": prev_out_size, "out_sx": 1, "out_sy": 1, "layer_type": "relu"}
-        if d is not None:
-            print('layer_defs.push(' + json.dumps(d, indent=4, sort_keys=True) + ');')
+            w = {"out_depth": cur_out_size, "out_sx": 1, "out_sy": 1, "layer_type": "relu"}
+
+        if first_subnet and m_idx == 0:
+            weights.append({
+                "out_depth": cur_in_size,
+                "out_sx": 1,
+                "out_sy": 1,
+                "layer_type": "input"
+            })
+            layers.append({
+                'type': 'input',
+                'out_sx': 1,
+                'out_sy': 1,
+                'out_depth': cur_in_size
+            })
         if w is not None:
-            if not input_created:
-                weights.append({
-                    "out_depth": m.in_features,
-                    "out_sx": 1,
-                    "out_sy": 1,
-                    "layer_type": "input"
-                })
-                input_created = True
             weights.append(w)
-    weights.append({
-        "out_depth": output_size,
-        "out_sx": 1,
-        "out_sy": 1,
-        "layer_type": "regression",
-        "num_inputs": output_size,
-    })
+        if d is not None:
+            layers.append(d)
 
-    return {
-        "layers": weights
-    }
+    if last_subnet:
+        layers.pop()
+        layers.append({'type': 'regression', 'num_neurons': cur_out_size})
+        weights.append({
+            "out_depth": cur_out_size,
+            "out_sx": 1,
+            "out_sy": 1,
+            "layer_type": "regression",
+            "num_inputs": cur_out_size,
+        })
 
-
+    return layers, {"layers": weights}
 
 
 def dump_layers(net, output_size):
@@ -236,3 +245,10 @@ def dump_layers(net, output_size):
     return {
         "layers": weights
     }
+
+
+def print_layers(layers):
+    assert isinstance(layers, list)
+
+    for l in layers:
+        print('layer_defs.push(' + json.dumps(l, indent=4, sort_keys=True) + ');')

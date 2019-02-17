@@ -30,12 +30,12 @@ if __name__ == "__main__":
     print("[0, 0, 0, 1] -> %s" % net(v)[0].detach().numpy().tolist())
 
     print("~~~~~~~~~~~~~ JS Network dump")
-    w = js.dump_fc(net, 6)
-    #print(json.dumps(w, indent=4, sort_keys=True))
+    layers, weights = js.fc(net)
+    js.print_layers(layers)
     print(f"""
 /*###########*/
 if (brain) {{
-    brain.value_net.fromJSON({json.dumps(w)});
+    brain.value_net.fromJSON({json.dumps(weights)});
 }}
     """)
 
