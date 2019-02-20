@@ -106,7 +106,7 @@ def pool_weights(m, size):
     }
 
 
-def fc(net, first_subnet=True, last_subnet=True):
+def fc(net):
     """
     Convert fully-connected sequence of layers into JS format
     NOTE: this version assume relu activations
@@ -135,36 +135,90 @@ def fc(net, first_subnet=True, last_subnet=True):
         elif isinstance(m, nn.ReLU):
             w = {"out_depth": cur_out_size, "out_sx": 1, "out_sy": 1, "layer_type": "relu"}
 
-        if first_subnet and m_idx == 0:
-            weights.append({
-                "out_depth": cur_in_size,
-                "out_sx": 1,
-                "out_sy": 1,
-                "layer_type": "input"
-            })
-            layers.append({
-                'type': 'input',
-                'out_sx': 1,
-                'out_sy': 1,
-                'out_depth': cur_in_size
-            })
         if w is not None:
             weights.append(w)
         if d is not None:
             layers.append(d)
 
-    if last_subnet:
-        layers.pop()
-        layers.append({'type': 'regression', 'num_neurons': cur_out_size})
-        weights.append({
-            "out_depth": cur_out_size,
-            "out_sx": 1,
-            "out_sy": 1,
-            "layer_type": "regression",
-            "num_inputs": cur_out_size,
-        })
+    return layers, weights
 
-    return layers, {"layers": weights}
+
+def conv(net):
+    layers = []
+    weights = []
+    cur_in_size, cur_out_size = None, None
+    for m_idx, m in enumerate(net.modules()):
+        d = None
+        w = None
+        if isinstance(m, nn.Conv2d):
+            # JSConvNet limitations
+            assert m.stride[0] == m.stride[1]
+            assert m.padding[0] == m.padding[1]
+            cur_in_size = m.in_channels
+            cur_out_size = m.out_channels
+            d = {
+                'type': 'conv',
+                'sx': m.kernel_size[0],
+                'sy': m.kernel_size[1],
+                'in_depth': m.in_channels,
+                'stride': m.stride[0],
+                'pad': m.padding[0],
+                'filters': m.out_channels,
+                'activation': 'relu',
+            }
+            w = conv_weights(m)
+        elif isinstance(m, nn.ReLU):
+            w = relu_weights(m, cur_out_size)
+        elif isinstance(m, nn.MaxPool2d):
+            d = {
+                'type': 'pool',
+                'sx': m.kernel_size,
+                'stride': m.stride,
+                'pad': m.padding,
+            }
+            w = pool_weights(m, cur_out_size)
+        if d is not None:
+            layers.append(d)
+        if w is not None:
+            weights.append(w)
+    return layers, weights
+
+
+def add_input_output(layers, weights, in_shape, out_shape):
+    assert isinstance(layers, list)
+    assert isinstance(weights, list)
+    assert isinstance(in_shape, (int, tuple))
+    assert isinstance(out_shape, (int, tuple))
+
+    if isinstance(in_shape, int):
+        in_shape = (in_shape, 1, 1)
+    if isinstance(out_shape, int):
+        out_shape = (out_shape, 1, 1)
+    layers.insert(0, {
+        "out_depth": in_shape[0],
+        "out_sx": in_shape[1],
+        "out_sy": in_shape[2],
+        "type": "input"
+    })
+    layers.pop()
+    layers.append({
+        'type': 'regression',
+        'num_neurons': out_shape[0] * out_shape[1] * out_shape[2]
+    })
+    weights.insert(0, {
+        "out_depth": in_shape[0],
+        "out_sx": in_shape[1],
+        "out_sy": in_shape[2],
+        "layer_type": "input"
+    })
+    weights.append({
+        "out_depth": out_shape[0],
+        "out_sx": out_shape[1],
+        "out_sy": out_shape[2],
+        "layer_type": "regression",
+        "num_inputs": out_shape[0] * out_shape[1] * out_shape[2]
+    })
+    return layers, weights
 
 
 def dump_layers(net, output_size):

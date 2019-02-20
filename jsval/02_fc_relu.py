@@ -38,10 +38,11 @@ if __name__ == "__main__":
 
     print("~~~~~~~~~~~~~ JS Network dump")
     layers, weights = js.fc(net)
+    js.add_input_output(layers, weights, in_shape=4, out_shape=6)
     js.print_layers(layers)
     print(f"""
     /*###########*/
     if (brain) {{
-        brain.value_net.fromJSON({json.dumps(weights)});
+        brain.value_net.fromJSON({json.dumps({"layers": weights})});
     }}
         """)
