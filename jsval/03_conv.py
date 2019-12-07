@@ -17,21 +17,21 @@ if __name__ == "__main__":
         nn.Conv2d(in_channels=2, out_channels=5, kernel_size=3),
         nn.ReLU(),
     )
+    reg_net = nn.Sequential(
+        nn.Linear(in_features=5*1*1, out_features=6)
+    )
+    full_net = lambda x: reg_net(net(x).view(x.size()[0], -1))
     print(net)
-    # it = net.modules()
-    # next(it)
-    # l = next(it)
-    # print(l.weight)
-    # print(l.bias)
+    print(reg_net)
     print("Probe values:")
-    z = torch.zeros(1, 2, 5, 5)
-    r = net(z)
-    print("zero: %s ->\n%s" % (z.size(), r))
-    for x in range(5):
-        for y in range(5):
+    z = torch.zeros(1, 2, 3, 3)
+    r = full_net(z)
+    print("zero: %s -> %s" % (z.size(), r.detach().numpy()[0]))
+    for x in range(3):
+        for y in range(3):
             z[0, 0, x, y] = 1.0
-            r = net(z)
-            print("(0, %d, %d) = 1 ->\n%s" % (x, y, r))
+            r = full_net(z)
+            print("(0, %d, %d) = 1 -> %s" % (x, y, r.detach().numpy()[0]))
             z[0, 0, x, y] = 0.0
     # print("[0, 0, 0, 0] -> %s" % net(v)[0].detach().numpy().tolist())
     # v = torch.tensor([[1, 0, 0, 0]], dtype=torch.float32)
@@ -45,7 +45,10 @@ if __name__ == "__main__":
     #
     print("~~~~~~~~~~~~~ JS Network dump")
     layers, weights = js.conv(net)
-    js.add_input_output(layers, weights, in_shape=(2, 5, 5), out_shape=(5, 3, 3))
+    f_layers, f_weights = js.fc(reg_net)
+    layers.extend(f_layers)
+    weights.extend(f_weights)
+    js.add_input_output(layers, weights, in_shape=(2, 3, 3), out_shape=6)
     js.print_layers(layers)
     print(f"""
     /*###########*/
